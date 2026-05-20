@@ -1,0 +1,171 @@
+@import "tailwindcss";
+
+@theme {
+  /* Medical Green Theme */
+  --color-primary-green: #2BB673;
+  --color-secondary-green: #1F8F63;
+  --color-bg-soft: #F7FAF9;
+  --color-text-dark: #1F2937;
+
+  --variant-dark: .dark &;
+}
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+
+  body {
+    @apply transition-colors duration-300 bg-bg-soft text-text-dark font-sans;
+  }
+}
+
+/* Layout Classes */
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-area {
+  flex: 1;
+}
+
+/* Custom Utilities for Redesign */
+.hero-gradient {
+  background: linear-gradient(135deg, #2BB673, #34D399, #1F8F63);
+}
+
+.auth-card-gradient {
+  background: linear-gradient(to bottom, #ffffff, #f0fdf4);
+}
+
+.btn-primary-gradient {
+  background: linear-gradient(135deg, #2BB673, #10B981);
+}
+
+.footer-gradient {
+  background: linear-gradient(180deg, #0f6a4d, #0b5a40);
+}
+
+.glass-morphism {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+.shadow-premium {
+  box-shadow: 0 25px 50px -12px rgba(43, 182, 115, 0.15);
+}
+
+.shadow-glow {
+  box-shadow: 0 0 20px rgba(43, 182, 115, 0.3);
+}
+
+.wave-separator {
+  position: relative;
+  height: 50px;
+  width: 100%;
+  background: transparent;
+}
+
+.curved-bottom {
+  border-bottom-left-radius: 50% 20px;
+  border-bottom-right-radius: 50% 20px;
+}
+
+/* UI/UX Enhancements */
+* {
+  /* Smooth global transitions for all interactive elements */
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease, fill 0.25s ease, stroke 0.25s ease, opacity 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+/* Specific resets to prevent unwanted global transitions on layout */
+html, body, #root, .app-container, .content-area, .hero-gradient, .footer-gradient {
+  transition: background-color 0.3s ease;
+}
+
+.btn-modern {
+  border-radius: 14px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-modern:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.card-modern {
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid #f3f4f6;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+}
+
+.card-modern:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+}
+
+.img-cover-rounded {
+  object-fit: cover;
+  border-radius: 20px;
+  width: 100%;
+  height: 100%;
+}
+
+.img-zoom-container {
+  overflow: hidden;
+  border-radius: 20px;
+}
+
+.img-zoom-container img {
+  transition: transform 0.4s ease;
+}
+
+.img-zoom-container:hover img {
+  transform: scale(1.05);
+}
+
+.nav-link-modern {
+  position: relative;
+  font-weight: 500;
+  padding: 0.5rem 0;
+}
+
+.nav-link-modern::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: 0px;
+  left: 50%;
+  background-color: var(--color-primary-green);
+  transition: all 0.3s ease;
+  transform: translateX(-50%);
+}
+
+.nav-link-modern:hover::after {
+  width: 100%;
+}

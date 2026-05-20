@@ -60,7 +60,7 @@ const getMyAppointments = async (req, res) => {
     }
 
     const appointments = await Appointment.find(filter)
-      .populate('doctor', 'name specialty')
+      .populate('doctor', 'name specialty profileImage')
       .populate('patient', 'name email')
       .sort({ createdAt: -1 });
 
@@ -91,6 +91,34 @@ const updateAppointmentStatus = async (req, res) => {
     if (req.body.status === 'accepted' && appointment.suggestedDate) {
         appointment.date = appointment.suggestedDate;
         appointment.time = appointment.suggestedTime;
+    }
+    // When doctor initially accepts, update the actual date/time
+    if (req.body.status === 'accepted' && req.body.date && req.body.time) {
+        appointment.date = req.body.date;
+        appointment.time = req.body.time;
+
+        // Auto-create an ongoing treatment so it appears in Treatment Overview
+        const Treatment = require('../models/Treatment');
+        const existingTreatment = await Treatment.findOne({
+            patient: appointment.patient,
+            doctor: appointment.doctor,
+            status: 'ongoing'
+        });
+
+        if (!existingTreatment) {
+            await Treatment.create({
+                patient: appointment.patient,
+                doctor: appointment.doctor,
+                condition: appointment.reason || 'General Consultation',
+                status: 'ongoing',
+                medicines: [],
+                notes: '',
+                totalVisits: 3,
+                completedVisits: 0,
+                observation: 'pending',
+                lastVisit: new Date(appointment.date)
+            });
+        }
     }
 
     const updated = await appointment.save();

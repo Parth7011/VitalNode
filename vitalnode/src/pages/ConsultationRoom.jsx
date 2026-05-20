@@ -5,6 +5,7 @@ import ChatBox from '../components/consultation/ChatBox';
 import { doctors } from '../data/doctors';
 import { useNotification } from '../context/NotificationContext';
 import { useAppointments } from '../context/AppointmentsContext';
+import { useTreatments } from '../context/TreatmentsContext';
 
 // Simulated doctor responses based on specialty
 const doctorResponses = {
@@ -64,8 +65,10 @@ const ConsultationRoom = () => {
         }
     }, [appointmentId, navigate, appointments]);
 
+    const { addOrUpdateTreatment } = useTreatments();
+
     // Handle ending the consultation — update treatment data with doctor feedback
-    const handleEndCall = () => {
+    const handleEndCall = async () => {
         if (!appointment || !doctor) {
             navigate('/appointments');
             return;
@@ -75,58 +78,22 @@ const ConsultationRoom = () => {
         const response = doctorResponses[doctor.specialty] || doctorResponses['default'];
 
         // Update the appointment status to 'completed' via context
-        completeAppointment(parseInt(appointmentId));
-
-        // Update or create the treatment entry
-        const treatments = JSON.parse(localStorage.getItem('vitalnode_treatments') || '[]');
-        const existingIdx = treatments.findIndex(t => t.doctorId === doctor.id && t.status === 'ongoing');
-
-        if (existingIdx !== -1) {
-            // Update existing treatment with consultation results
-            const existing = treatments[existingIdx];
-            const newCompletedVisits = existing.completedVisits + 1;
-            const isCompleted = newCompletedVisits >= existing.totalVisits;
-            const newRecovery = isCompleted ? 100 : Math.min(90, Math.round((newCompletedVisits / existing.totalVisits) * 80) + 10);
-
-            treatments[existingIdx] = {
-                ...existing,
+        await completeAppointment(appointment.id); // Note: appointment.id is already the string/number id from DB
+        
+        try {
+            await addOrUpdateTreatment({
+                patientId: appointment.patient?._id || appointment.patient,
                 condition: response.condition,
                 medicines: response.medicines,
                 notes: response.notes,
                 observation: response.observation,
-                completedVisits: newCompletedVisits,
-                recoveryPercent: newRecovery,
-                lastVisit: appointment.date || new Date().toISOString().split('T')[0],
-                nextVisit: isCompleted ? null : existing.nextVisit,
-                status: isCompleted ? 'completed' : 'ongoing',
-            };
-        } else {
-            // Create treatment if none exists
-            treatments.push({
-                id: Date.now(),
-                appointmentId: appointment.id,
-                doctorId: doctor.id,
-                doctorName: doctor.name,
-                doctorImage: doctor.image,
-                specialty: doctor.specialty,
-                condition: response.condition,
-                status: 'ongoing',
-                completedVisits: 1,
-                totalVisits: 3,
-                recoveryPercent: 25,
-                lastVisit: appointment.date || new Date().toISOString().split('T')[0],
-                nextVisit: null,
-                medicines: response.medicines,
-                notes: response.notes,
-                observation: response.observation,
-                createdAt: new Date().toISOString(),
             });
+            showNotification('Consultation completed. Treatment updated.', 'success');
+        } catch (error) {
+            console.error('Failed to update treatment', error);
+            showNotification('Consultation completed, but failed to update treatment.', 'error');
         }
 
-        localStorage.setItem('vitalnode_treatments', JSON.stringify(treatments));
-        window.dispatchEvent(new Event('treatmentsUpdated'));
-
-        showNotification('Consultation completed. Treatment updated.', 'success');
         navigate('/my-treatments');
     };
 

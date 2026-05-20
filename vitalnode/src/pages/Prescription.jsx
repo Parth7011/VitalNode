@@ -1,49 +1,27 @@
 import { useState } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-
-// Mock data for prescriptions
-const mockPrescriptions = [
-    {
-        id: 'PR-10042',
-        doctorName: 'Dr. Sarah Jenkins',
-        specialty: 'Cardiologist',
-        date: 'Oct 24, 2023',
-        status: 'Active',
-        notes: 'Take medicine after meals. Return for checkup in 2 weeks.',
-        medications: 3
-    },
-    {
-        id: 'PR-09831',
-        doctorName: 'Dr. Michael Chen',
-        specialty: 'Dermatologist',
-        date: 'Sep 12, 2023',
-        status: 'Completed',
-        notes: 'Apply cream twice daily for 7 days.',
-        medications: 1
-    },
-    {
-        id: 'PR-08244',
-        doctorName: 'Dr. Emily Roberts',
-        specialty: 'General Physician',
-        date: 'Jul 05, 2023',
-        status: 'Completed',
-        notes: 'Rest for 3 days and drink plenty of fluids.',
-        medications: 2
-    }
-];
+import { useTreatments } from '../context/TreatmentsContext';
 
 // Prescription page component for patients to view their medical prescriptions
 const Prescription = () => {
     // State to handle the search input for filtering prescriptions
     const [searchTerm, setSearchTerm] = useState('');
+    const { treatments } = useTreatments();
 
-    // Filter prescriptions based on doctor name, specialty, or prescription ID
-    const filteredPrescriptions = mockPrescriptions.filter(p =>
-        p.doctorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.specialty.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.id.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Only show prescriptions that have medicines prescribed
+    const prescriptionList = treatments.filter(t => t.medicines && t.medicines.length > 0);
+
+    // Filter prescriptions based on doctor name, specialty, or condition
+    const filteredPrescriptions = prescriptionList.filter(p => {
+        const docName = p.doctorName || '';
+        const specialty = p.specialty || '';
+        const condition = p.condition || '';
+        
+        return docName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               specialty.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               condition.toLowerCase().includes(searchTerm.toLowerCase());
+    });
 
     return (
         <div className="app-container font-sans selection:bg-primary-green selection:text-white relative overflow-hidden">
@@ -62,7 +40,7 @@ const Prescription = () => {
                                 My Prescriptions
                             </h1>
                             <p className="text-gray-600">
-                                View and download medical prescriptions uploaded by your doctors.
+                                View medical prescriptions updated by your doctors.
                             </p>
                         </div>
                         <div className="relative w-full md:w-72">
@@ -89,10 +67,7 @@ const Prescription = () => {
                                             {/* Details Info */}
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-3 mb-2">
-                                                    <span className="font-mono text-sm font-semibold text-primary-green bg-green-50 px-3 py-1 rounded-full">
-                                                        {prescription.id}
-                                                    </span>
-                                                    <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${prescription.status === 'Active' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'
+                                                    <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${prescription.status === 'ongoing' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'
                                                         }`}>
                                                         {prescription.status}
                                                     </span>
@@ -100,7 +75,7 @@ const Prescription = () => {
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                                         </svg>
-                                                        {prescription.date}
+                                                        {new Date(prescription.updatedAt || prescription.createdAt).toLocaleDateString()}
                                                     </span>
                                                 </div>
 
@@ -108,19 +83,28 @@ const Prescription = () => {
                                                     {prescription.doctorName}
                                                 </h3>
                                                 <p className="text-sm text-gray-500 mb-3">{prescription.specialty}</p>
+                                                
+                                                {/* Medicines list */}
+                                                <div className="flex flex-wrap gap-2 mb-3">
+                                                    {prescription.medicines.map((med, idx) => (
+                                                        <span key={idx} className="text-xs font-semibold bg-primary-green/10 text-primary-green px-2 py-1 rounded-md">
+                                                            {med}
+                                                        </span>
+                                                    ))}
+                                                </div>
 
                                                 <div className="flex items-start gap-2 bg-gradient-to-r from-green-50 to-blue-50 p-3 rounded-xl border border-green-100/50 shadow-sm mt-3">
                                                     <svg className="w-5 h-5 text-primary-green shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                     </svg>
-                                                    <p className="text-sm text-gray-700 italic">"{prescription.notes}"</p>
+                                                    <p className="text-sm text-gray-700 italic">"{prescription.notes || 'No notes provided'}"</p>
                                                 </div>
                                             </div>
 
                                             {/* Actions */}
                                             <div className="flex sm:flex-col gap-3 shrink-0">
                                                 <button
-                                                    onClick={() => alert(`Viewing prescription ${prescription.id} from ${prescription.doctorName}`)}
+                                                    onClick={() => alert(`Viewing prescription details from ${prescription.doctorName}`)}
                                                     className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-primary-green to-secondary-green text-white hover:from-secondary-green hover:to-primary-green px-6 py-2.5 rounded-xl font-semibold transition-all shadow-md transform hover:-translate-y-0.5"
                                                 >
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,7 +114,7 @@ const Prescription = () => {
                                                     View
                                                 </button>
                                                 <button
-                                                    onClick={() => alert(`Downloading prescription ${prescription.id}.pdf...`)}
+                                                    onClick={() => alert(`Downloading prescription...`)}
                                                     className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white text-gray-700 border-2 border-gray-200 hover:border-primary-green hover:text-primary-green px-6 py-2.5 rounded-xl font-semibold transition-all"
                                                 >
                                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

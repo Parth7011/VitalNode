@@ -4,6 +4,7 @@ import { NotificationProvider } from './context/NotificationContext';
 import { DoctorsProvider } from './context/DoctorsContext';
 import { AppointmentsProvider } from './context/AppointmentsContext';
 import { SocketProvider } from './context/SocketContext';
+import { TreatmentsProvider } from './context/TreatmentsContext';
 import AppRoutes from './routes/AppRoutes';
 
 function App() {
@@ -13,9 +14,11 @@ function App() {
         <AuthProvider>
           <DoctorsProvider>
             <AppointmentsProvider>
-              <SocketProvider>
-                <AppRoutes />
-              </SocketProvider>
+              <TreatmentsProvider>
+                <SocketProvider>
+                  <AppRoutes />
+                </SocketProvider>
+              </TreatmentsProvider>
             </AppointmentsProvider>
           </DoctorsProvider>
         </AuthProvider>

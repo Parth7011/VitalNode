@@ -136,6 +136,23 @@ export const AppointmentsProvider = ({ children }) => {
         }
     };
 
+    const cancelAppointment = async (id) => {
+        if (!user || !user.token) return;
+        try {
+            const res = await fetch(`${API_URL}/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${user.token}`
+                }
+            });
+            if (res.ok) {
+                fetchAppointments();
+            }
+        } catch (error) {
+            console.error('Failed to cancel appointment:', error);
+        }
+    };
+
     const getPatientAppointments = (patientId) => 
         appointments.filter(a => a.patient?._id === patientId || a.patient === patientId);
 
@@ -150,6 +167,7 @@ export const AppointmentsProvider = ({ children }) => {
             approveAppointment,
             rejectAppointment,
             completeAppointment,
+            cancelAppointment,
             getPatientAppointments,
             getDoctorRequests,
             EMERGENCY_SURCHARGE,

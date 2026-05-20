@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppointments } from '../context/AppointmentsContext';
 import { useNotification } from '../context/NotificationContext';
 import DashboardSidebar from '../components/dashboard/DashboardSidebar';
@@ -214,6 +214,7 @@ const CircularProgress = ({ percentage }) => {
 const DoctorDashboard = () => {
     const { user, updateProfile } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const { showNotification } = useNotification();
     const { appointments, approveAppointment, rejectAppointment } = useAppointments();
 
@@ -231,8 +232,17 @@ const DoctorDashboard = () => {
     const pendingRef = useRef(null);
     const scheduleRef = useRef(null);
     const patientsRef = useRef(null);
+    const profileRef = useRef(null);
 
     const scrollToRef = (ref) => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Hash-based auto-scroll for sidebar links
+    useEffect(() => {
+        const hash = location.hash;
+        if (hash === '#schedule') scrollToRef(scheduleRef);
+        else if (hash === '#patients') scrollToRef(patientsRef);
+        else if (hash === '#profile') scrollToRef(profileRef);
+    }, [location.hash]);
 
     // Filter appointments
     const pending   = appointments.filter((a) => a.status === 'pending');
@@ -307,17 +317,17 @@ const DoctorDashboard = () => {
     const completedPct = Math.round((completed.length / totalAll) * 100);
 
     return (
-        <div className="min-h-screen bg-bg-soft flex overflow-hidden p-6 gap-6">
+        <div className="min-h-screen bg-bg-soft flex flex-col md:flex-row overflow-hidden p-2 sm:p-4 md:p-6 gap-2 sm:gap-4 md:gap-6">
             <DashboardSidebar />
 
-            <main className="flex-1 bg-white rounded-[40px] shadow-sm overflow-y-auto h-full flex flex-col xl:flex-row">
+            <main className="flex-1 bg-white rounded-[24px] md:rounded-[40px] shadow-sm overflow-y-auto h-full flex flex-col xl:flex-row">
                 
                 {/* ── Center Content Area ── */}
-                <div className="flex-1 p-8 lg:p-12 border-r border-gray-50">
+                <div className="flex-1 p-4 sm:p-6 lg:p-12 border-b xl:border-b-0 xl:border-r border-gray-50 w-full overflow-hidden">
                     
                     {/* Top Header */}
-                    <div className="flex justify-between items-center mb-8">
-                        <div className="relative w-96">
+                    <div className="flex flex-col-reverse sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+                        <div className="relative w-full sm:w-96">
                             <input 
                                 type="text" 
                                 placeholder="Search for events, patients etc." 
@@ -374,7 +384,7 @@ const DoctorDashboard = () => {
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                 {today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                             </div>
-                            <h1 className="text-4xl font-bold mb-2 tracking-tight">Good Day, Dr. {user?.name || 'Doctor'}!</h1>
+                            <h1 className="text-4xl font-bold mb-2 tracking-tight">Good Day, {user?.name || 'Doctor'}!</h1>
                             <p className="text-white/80 font-medium">Have a nice {today.toLocaleDateString('en-US', { weekday: 'long' })}!</p>
                         </div>
                         <div className="relative z-10 hidden md:block">
@@ -537,6 +547,46 @@ const DoctorDashboard = () => {
                         )}
                     </div>
 
+                    {/* Upcoming Consultations Section */}
+                    <div className="pt-12">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-bold text-text-dark flex items-center gap-2">
+                                <div className="w-2 h-2 bg-primary-green rounded-full" /> Upcoming Consultations
+                            </h3>
+                        </div>
+                        {approved.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {approved.map(appt => (
+                                    <div key={appt.id} className="border border-gray-100 bg-white rounded-2xl p-5 shadow-sm hover:border-primary-green/30 transition-all flex flex-col">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            <div className="w-10 h-10 bg-primary-green/10 text-primary-green rounded-full flex items-center justify-center font-bold text-lg shrink-0">
+                                                {appt.patientName?.[0] || 'P'}
+                                            </div>
+                                            <div className="flex-1">
+                                                <h4 className="font-bold text-text-dark">{appt.patientName}</h4>
+                                                <span className="text-[10px] text-gray-400 uppercase tracking-widest">{appt.type === 'video' ? 'Video Call' : 'In-Person'}</span>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mb-4 line-clamp-2">{appt.problem}</p>
+                                        <div className="mt-auto pt-4 border-t border-gray-50 flex items-center justify-between">
+                                            <div className="flex items-center gap-2 text-xs font-bold text-text-dark">
+                                                <svg className="w-4 h-4 text-primary-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                {new Date(appt.date).toLocaleDateString()} at {appt.time}
+                                            </div>
+                                            <button onClick={() => navigate(`/doctor-consultation/${appt.id}`)} className="bg-primary-green text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl hover:bg-secondary-green transition-all shadow-md shadow-primary-green/20">
+                                                Join
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="bg-white border border-dashed border-gray-200 rounded-3xl p-8 text-center">
+                                <p className="text-sm text-gray-400 font-medium">No upcoming consultations.</p>
+                            </div>
+                        )}
+                    </div>
+
                     {/* Active Patients & Treatment Timeline */}
                     <div ref={patientsRef} className="pt-12">
                         <div className="flex items-center gap-3 mb-6">
@@ -552,7 +602,7 @@ const DoctorDashboard = () => {
                 <div ref={scheduleRef} className="w-full xl:w-96 p-8 lg:p-12 bg-gray-50/50 flex flex-col gap-8 shrink-0">
                     
                     {/* Profile Card */}
-                    <div className="bg-primary-green rounded-[32px] p-6 text-white shadow-xl shadow-primary-green/20">
+                    <div ref={profileRef} className="bg-primary-green rounded-[32px] p-6 text-white shadow-xl shadow-primary-green/20">
                         <div className="flex justify-between items-center mb-6">
                             <span className="text-xs font-bold tracking-widest uppercase text-white/80">My Profile</span>
                             <button onClick={() => setShowEditProfile(true)} className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center hover:bg-white/30 transition-colors">
@@ -564,7 +614,7 @@ const DoctorDashboard = () => {
                                 {(user?.name?.[0] || 'D').toUpperCase()}
                             </div>
                             <div>
-                                <h3 className="font-bold text-lg">Dr. {user?.name || 'Doctor'}</h3>
+                                <h3 className="font-bold text-lg">{user?.name || 'Doctor'}</h3>
                                 <div className="text-[10px] text-white/70 font-black uppercase tracking-widest mb-1">{user?.specialty || 'General Physician'}</div>
                                 <div className="text-xs text-white/90 flex items-center gap-1">
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>

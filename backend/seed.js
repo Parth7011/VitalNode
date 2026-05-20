@@ -71,7 +71,7 @@ const doctorsData = [
 
 const seedDoctors = async () => {
     try {
-        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/vitalnode');
+        await mongoose.connect(process.env.MONGO_URI);
         console.log('Connected to MongoDB');
 
         // Optional: Clear existing doctors

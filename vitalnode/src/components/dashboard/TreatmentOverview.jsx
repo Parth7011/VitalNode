@@ -1,28 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useTreatments } from '../../context/TreatmentsContext';
+import { useAuth } from '../../context/AuthContext';
 
-// TreatmentOverview component reads dynamically from localStorage
-// Treatments are created when appointments are booked and updated during consultations
+// TreatmentOverview component reads dynamically from the backend
 const TreatmentOverview = ({ fullPage = false }) => {
+    const { user } = useAuth();
+    const { treatments, addOrUpdateTreatment } = useTreatments();
     const [filter, setFilter] = useState('all');
     const [expandedId, setExpandedId] = useState(null);
-    const [treatments, setTreatments] = useState([]);
 
-    // Load treatments from localStorage
-    useEffect(() => {
-        const loadTreatments = () => {
-            const stored = JSON.parse(localStorage.getItem('vitalnode_treatments') || '[]');
-            setTreatments(stored);
-        };
-        loadTreatments();
-
-        // Listen for storage changes (cross-tab and custom events)
-        window.addEventListener('storage', loadTreatments);
-        window.addEventListener('treatmentsUpdated', loadTreatments);
-        return () => {
-            window.removeEventListener('storage', loadTreatments);
-            window.removeEventListener('treatmentsUpdated', loadTreatments);
-        };
-    }, []);
+    // State for the new prescription box
+    const [prescriptionForm, setPrescriptionForm] = useState({ medicines: '', notes: '' });
 
     const filtered = filter === 'all' ? treatments : treatments.filter(t => t.status === filter);
     const ongoingCount = treatments.filter(t => t.status === 'ongoing').length;
@@ -47,13 +35,31 @@ const TreatmentOverview = ({ fullPage = false }) => {
         }
     };
 
-    // Mark a treatment as completed
-    const handleMarkComplete = (id) => {
-        const stored = JSON.parse(localStorage.getItem('vitalnode_treatments') || '[]');
-        const updated = stored.map(t => t.id === id ? { ...t, status: 'completed', recoveryPercent: 100, completedVisits: t.totalVisits } : t);
-        localStorage.setItem('vitalnode_treatments', JSON.stringify(updated));
-        setTreatments(updated);
-        window.dispatchEvent(new Event('treatmentsUpdated'));
+    const handleMarkComplete = async (patientId) => {
+        try {
+            await addOrUpdateTreatment({
+                patientId,
+                status: 'completed'
+            });
+        } catch (error) {
+            console.error('Failed to mark complete:', error);
+        }
+    };
+
+    const handleAddPrescription = async (patientId) => {
+        try {
+            const medicinesArray = prescriptionForm.medicines.split(',').map(m => m.trim()).filter(m => m);
+            await addOrUpdateTreatment({
+                patientId,
+                medicines: medicinesArray,
+                notes: prescriptionForm.notes
+            });
+            setPrescriptionForm({ medicines: '', notes: '' });
+            alert('Prescription added successfully!');
+        } catch (error) {
+            console.error('Failed to add prescription:', error);
+            alert('Error adding prescription');
+        }
     };
 
     return (
@@ -122,6 +128,8 @@ const TreatmentOverview = ({ fullPage = false }) => {
                         const progressPercent = treatment.totalVisits > 0
                             ? Math.round((treatment.completedVisits / treatment.totalVisits) * 100)
                             : 0;
+                        const displayImage = user?.role === 'doctor' ? (treatment.patient?.profileImage || '') : treatment.doctorImage;
+                        const displayName = user?.role === 'doctor' ? treatment.patientName : treatment.doctorName;
 
                         return (
                             <div
@@ -133,10 +141,10 @@ const TreatmentOverview = ({ fullPage = false }) => {
                                 {/* Main Card Content */}
                                 <div className="p-6">
                                     <div className="flex flex-col sm:flex-row gap-5">
-                                        {/* Doctor Avatar */}
+                                        {/* Avatar */}
                                         <div className="shrink-0">
-                                            <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-sm ring-2 ring-gray-50">
-                                                <img src={treatment.doctorImage} alt={treatment.doctorName} className="w-full h-full object-cover" />
+                                            <div className="w-14 h-14 bg-gray-100 text-primary-green flex items-center justify-center font-bold text-xl rounded-2xl overflow-hidden shadow-sm ring-2 ring-gray-50">
+                                                {displayImage ? <img src={displayImage} alt={displayName} className="w-full h-full object-cover" /> : displayName[0]}
                                             </div>
                                         </div>
 
@@ -144,8 +152,10 @@ const TreatmentOverview = ({ fullPage = false }) => {
                                         <div className="flex-1 min-w-0">
                                             <div className="flex flex-col sm:flex-row justify-between items-start gap-2 mb-3">
                                                 <div>
-                                                    <h3 className="font-bold text-text-dark text-base">{treatment.doctorName}</h3>
-                                                    <p className="text-[10px] font-black text-primary-green uppercase tracking-widest">{treatment.specialty}</p>
+                                                    <h3 className="font-bold text-text-dark text-base">{displayName}</h3>
+                                                    {user?.role !== 'doctor' && (
+                                                        <p className="text-[10px] font-black text-primary-green uppercase tracking-widest">{treatment.specialty}</p>
+                                                    )}
                                                 </div>
                                                 <div className="flex items-center gap-2 flex-wrap">
                                                     <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full ${
@@ -169,18 +179,10 @@ const TreatmentOverview = ({ fullPage = false }) => {
                                                 <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
                                                     <div className="flex items-center gap-1.5">
                                                         <svg className="w-3.5 h-3.5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v12a2 2 0 002 2z" />
                                                         </svg>
-                                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Last: {formatDate(treatment.lastVisit)}</span>
+                                                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Last: {formatDate(treatment.lastVisit || treatment.updatedAt)}</span>
                                                     </div>
-                                                    {treatment.nextVisit && (
-                                                        <div className="flex items-center gap-1.5">
-                                                            <svg className="w-3.5 h-3.5 text-primary-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                            </svg>
-                                                            <span className="text-[10px] text-primary-green font-bold uppercase tracking-wider">Next: {formatDate(treatment.nextVisit)}</span>
-                                                        </div>
-                                                    )}
                                                 </div>
                                             </div>
 
@@ -202,21 +204,6 @@ const TreatmentOverview = ({ fullPage = false }) => {
                                                         />
                                                     </div>
                                                 </div>
-                                                <div className="shrink-0 w-14 h-14 relative flex items-center justify-center">
-                                                    <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
-                                                        <circle cx="28" cy="28" r="24" fill="none" stroke="#f1f5f9" strokeWidth="4" />
-                                                        <circle
-                                                            cx="28" cy="28" r="24" fill="none"
-                                                            stroke={treatment.status === 'completed' ? '#9ca3af' : '#2BB673'}
-                                                            strokeWidth="4"
-                                                            strokeDasharray={`${2 * Math.PI * 24}`}
-                                                            strokeDashoffset={`${2 * Math.PI * 24 * (1 - treatment.recoveryPercent / 100)}`}
-                                                            strokeLinecap="round"
-                                                            className="transition-all duration-700"
-                                                        />
-                                                    </svg>
-                                                    <span className="absolute text-[10px] font-black text-text-dark">{treatment.recoveryPercent}%</span>
-                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -234,7 +221,7 @@ const TreatmentOverview = ({ fullPage = false }) => {
                                 </div>
 
                                 {/* Expanded Details */}
-                                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
                                     <div className="px-6 pb-6 pt-2 border-t border-gray-50">
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                             {/* Medicines */}
@@ -247,7 +234,7 @@ const TreatmentOverview = ({ fullPage = false }) => {
                                                     </div>
                                                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.25em]">Prescribed Medicines</span>
                                                 </div>
-                                                <div className="space-y-2">
+                                                <div className="space-y-2 mb-6">
                                                     {treatment.medicines && treatment.medicines.length > 0 ? (
                                                         treatment.medicines.map((med, i) => (
                                                             <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl">
@@ -259,6 +246,34 @@ const TreatmentOverview = ({ fullPage = false }) => {
                                                         <p className="text-sm text-gray-400 italic">Pending doctor's prescription</p>
                                                     )}
                                                 </div>
+
+                                                {/* Doctor Section: Add Prescription */}
+                                                {user?.role === 'doctor' && (
+                                                    <div className="mt-4 border-t border-dashed border-gray-200 pt-4">
+                                                        <h4 className="text-xs font-bold text-text-dark mb-2">Add / Update Prescription</h4>
+                                                        <input 
+                                                            type="text" 
+                                                            name="medicines"
+                                                            value={prescriptionForm.medicines}
+                                                            onChange={(e) => setPrescriptionForm({ ...prescriptionForm, medicines: e.target.value })}
+                                                            placeholder="Medicines (comma separated)"
+                                                            className="w-full p-2 text-sm bg-gray-50 border border-gray-200 rounded-lg mb-2 focus:outline-none focus:border-primary-green"
+                                                        />
+                                                        <textarea 
+                                                            name="notes"
+                                                            value={prescriptionForm.notes}
+                                                            onChange={(e) => setPrescriptionForm({ ...prescriptionForm, notes: e.target.value })}
+                                                            placeholder="Doctor notes"
+                                                            className="w-full p-2 text-sm bg-gray-50 border border-gray-200 rounded-lg mb-2 focus:outline-none focus:border-primary-green resize-none h-20"
+                                                        />
+                                                        <button 
+                                                            onClick={() => handleAddPrescription(treatment.patient._id || treatment.patient)}
+                                                            className="bg-primary-green text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-secondary-green transition-colors"
+                                                        >
+                                                            Save Prescription
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* Doctor Notes */}
@@ -276,9 +291,9 @@ const TreatmentOverview = ({ fullPage = false }) => {
                                                 </div>
 
                                                 {/* Mark Complete button for ongoing treatments */}
-                                                {treatment.status === 'ongoing' && fullPage && (
+                                                {treatment.status === 'ongoing' && fullPage && user?.role === 'patient' && (
                                                     <button
-                                                        onClick={() => handleMarkComplete(treatment.id)}
+                                                        onClick={() => handleMarkComplete(treatment.patient._id || treatment.patient)}
                                                         className="mt-4 w-full px-4 py-2.5 bg-gray-50 text-gray-500 hover:bg-primary-green/10 hover:text-primary-green text-[10px] font-black uppercase tracking-widest rounded-xl transition-all border border-gray-100 hover:border-primary-green/20"
                                                     >
                                                         Mark as Completed

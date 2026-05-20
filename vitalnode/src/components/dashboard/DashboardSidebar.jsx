@@ -75,21 +75,28 @@ const DashboardSidebar = () => {
             )
         },
         {
-            name: 'Schedule', path: '/doctor-dashboard', icon: (
+            name: 'Schedule', path: '/doctor-dashboard#schedule', icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
             )
         },
         {
-            name: 'Patients', path: '/doctor-dashboard', icon: (
+            name: 'Patients', path: '/doctor-dashboard#patients', icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
             )
         },
         {
-            name: 'Profile', path: '/doctor-dashboard', icon: (
+            name: 'Prescriptions', path: '/doctor-prescriptions', icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+            )
+        },
+        {
+            name: 'Profile', path: '/doctor-dashboard#profile', icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -108,34 +115,37 @@ const DashboardSidebar = () => {
     const menuItems = user?.role === 'doctor' ? doctorMenuItems : patientMenuItems;
 
     return (
-        <aside className="w-64 bg-white border-r border-gray-100 flex flex-col h-full sticky top-0 overflow-y-auto shrink-0 transition-all duration-300">
-            <div className="p-8">
-                <div className="flex items-center gap-3 mb-10">
+        <aside className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-gray-100 flex flex-row md:flex-col h-auto md:h-full sticky top-0 z-40 overflow-x-auto md:overflow-y-auto shrink-0 transition-all duration-300 rounded-[24px] md:rounded-none no-scrollbar">
+            <div className="p-4 md:p-8 flex items-center md:block flex-1 md:flex-none">
+                <div className="flex items-center gap-3 md:mb-10 shrink-0 mr-6 md:mr-0">
                     <div className="w-10 h-10 bg-primary-green rounded-xl flex items-center justify-center text-white font-black shadow-lg shadow-primary-green/20">V</div>
-                    <span className="text-xl font-bold text-text-dark tracking-tight">VitalNode</span>
+                    <span className="hidden md:block text-xl font-bold text-text-dark tracking-tight">VitalNode</span>
                 </div>
 
-                <nav className="space-y-1">
+                <nav className="flex md:flex-col gap-2 md:gap-0 md:space-y-1">
                     {menuItems.map((item) => {
-                        const isActive = location.pathname === item.path;
+                        const fullPath = location.pathname + location.hash;
+                        const isActive = item.path.includes('#')
+                            ? fullPath === item.path
+                            : location.pathname === item.path;
                         return (
                             <Link
                                 key={item.name}
                                 to={item.path}
-                                className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all duration-200 ${isActive
+                                className={`flex items-center gap-3 px-4 py-3 md:py-3.5 rounded-2xl text-sm font-bold transition-all duration-200 whitespace-nowrap ${isActive
                                     ? 'bg-primary-green text-white shadow-lg shadow-primary-green/20'
                                     : 'text-gray-400 hover:text-text-dark hover:bg-gray-50'
                                     }`}
                             >
                                 {item.icon}
-                                {item.name}
+                                <span className="hidden sm:inline-block">{item.name}</span>
                             </Link>
                         );
                     })}
                 </nav>
             </div>
 
-            <div className="mt-auto p-8 border-t border-gray-50">
+            <div className="mt-auto p-4 md:p-8 md:border-t border-gray-50 shrink-0">
                 <button
                     onClick={logout}
                     className="flex items-center gap-3 px-4 py-3.5 w-full rounded-2xl text-sm font-bold text-red-500 hover:bg-red-50 transition-all duration-200"

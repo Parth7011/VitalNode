@@ -24,7 +24,7 @@ const ChatBox = ({ roomId, asDoctor = false }) => {
 
     // Join the shared room and listen for incoming messages
     useEffect(() => {
-        if (!roomId || !socket.current) return;
+        if (!roomId || !socket) return;
 
         joinRoom(`appt-${roomId}`);
 
@@ -32,10 +32,10 @@ const ChatBox = ({ roomId, asDoctor = false }) => {
             setMessages((prev) => [...prev, { id: Date.now(), ...msg }]);
         };
 
-        socket.current.on('receiveMessage', handleReceive);
+        socket.on('receiveMessage', handleReceive);
 
         return () => {
-            socket.current?.off('receiveMessage', handleReceive);
+            socket.off('receiveMessage', handleReceive);
         };
     }, [roomId, socket]);
 
@@ -46,13 +46,13 @@ const ChatBox = ({ roomId, asDoctor = false }) => {
 
     const handleSend = (e) => {
         e.preventDefault();
-        if (!input.trim() || !socket.current) return;
+        if (!input.trim() || !socket) return;
 
         const senderRole = asDoctor ? 'doctor' : 'patient';
         const senderName = user?.name || (asDoctor ? 'Doctor' : 'Patient');
         const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-        socket.current.emit('sendMessage', {
+        socket.emit('sendMessage', {
             roomId: `appt-${roomId}`,
             text: input.trim(),
             sender: senderRole,

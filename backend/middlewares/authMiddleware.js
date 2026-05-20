@@ -17,6 +17,12 @@ const protect = async (req, res, next) => {
       // Extract token from "Bearer <token>"
       token = req.headers.authorization.split(' ')[1];
 
+      // Simulated Admin Token Bypass
+      if (token === 'simulated-admin-jwt-token') {
+          req.user = { role: 'admin', _id: 'admin_id', name: 'Hospital Admin' };
+          return next();
+      }
+
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 

@@ -41,37 +41,94 @@ export const DoctorsProvider = ({ children }) => {
 
     // ── CRUD helpers used by AdminDashboard ────────────────────────────────────
 
-    const addDoctor = (docData) => {
-        const newDoc = {
-            id: Date.now(),
-            patientsTreated: '0+',
-            about: '',
-            reviews: [],
-            ...docData,
-            fee: parseInt(docData.fee) || 500,
-            rating: Math.min(5, parseFloat(docData.rating) || 5.0),
-        };
-        setDoctors((prev) => [newDoc, ...prev]);
-        return newDoc;
+    const getToken = () => {
+        const userStr = localStorage.getItem('vitalnode_user');
+        if (userStr) return JSON.parse(userStr).token;
+        return '';
     };
 
-    const updateDoctor = (id, updates) => {
-        setDoctors((prev) =>
-            prev.map((d) =>
-                d.id === id
-                    ? {
-                          ...d,
-                          ...updates,
-                          fee: parseInt(updates.fee ?? d.fee) || d.fee,
-                          rating: Math.min(5, parseFloat(updates.rating ?? d.rating) || d.rating),
-                      }
-                    : d
-            )
-        );
+    const addDoctor = async (docData) => {
+        try {
+            const res = await fetch('http://localhost:5000/api/doctors', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${getToken()}`
+                },
+                body: JSON.stringify({
+                    ...docData,
+                    fee: parseInt(docData.fee) || 500,
+                    rating: Math.min(5, parseFloat(docData.rating) || 5.0)
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Error adding doctor');
+            
+            const newDoc = {
+                ...data,
+                id: data._id,
+                image: data.profileImage,
+                fee: data.consultationFee,
+                qualification: data.qualification || 'MBBS, MD',
+                patientsTreated: data.patientsTreated || '0+',
+            };
+            setDoctors((prev) => [newDoc, ...prev]);
+            return newDoc;
+        } catch (err) {
+            console.error(err);
+        }
     };
 
-    const deleteDoctor = (id) => {
-        setDoctors((prev) => prev.filter((d) => d.id !== id));
+    const updateDoctor = async (id, updates) => {
+        try {
+            const res = await fetch(`http://localhost:5000/api/doctors/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${getToken()}`
+                },
+                body: JSON.stringify({
+                    ...updates,
+                    fee: parseInt(updates.fee) || 500,
+                    rating: Math.min(5, parseFloat(updates.rating) || 5.0)
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Error updating doctor');
+
+            setDoctors((prev) =>
+                prev.map((d) =>
+                    d.id === id
+                        ? {
+                              ...d,
+                              ...updates,
+                              fee: parseInt(updates.fee ?? d.fee) || d.fee,
+                              rating: Math.min(5, parseFloat(updates.rating ?? d.rating) || d.rating),
+                          }
+                        : d
+                )
+            );
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const deleteDoctor = async (id) => {
+        try {
+            const res = await fetch(`http://localhost:5000/api/doctors/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    Authorization: `Bearer ${getToken()}`
+                }
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.message || 'Error deleting doctor');
+            }
+            setDoctors((prev) => prev.filter((d) => d.id !== id));
+        } catch (err) {
+            console.error(err);
+        }
     };
 
     return (

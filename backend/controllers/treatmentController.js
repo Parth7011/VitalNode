@@ -1,11 +1,20 @@
 const Treatment = require('../models/Treatment');
+const Doctor = require('../models/Doctor');
 
 const getMyTreatments = async (req, res) => {
     try {
-        const filter = req.user.role === 'doctor' ? { doctor: req.user._id } : { patient: req.user._id };
+        let filter = {};
+        if (req.user.role === 'doctor') {
+            const doctorProfile = await Doctor.findOne({ user: req.user._id });
+            if (!doctorProfile) return res.json([]);
+            filter = { doctor: doctorProfile._id };
+        } else {
+            filter = { patient: req.user._id };
+        }
         const treatments = await Treatment.find(filter)
-            .populate('doctor', 'name specialty')
-            .populate('patient', 'name email');
+            .populate('doctor', 'name specialty profileImage')
+            .populate('patient', 'name email')
+            .sort({ updatedAt: -1 });
         res.json(treatments);
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -16,7 +25,12 @@ const createOrUpdateTreatment = async (req, res) => {
     try {
         const { patientId, condition, medicines, totalVisits, completedVisits, notes, status, observation } = req.body;
         
-        let treatment = await Treatment.findOne({ patient: patientId, doctor: req.user._id, status: 'ongoing' });
+        // Resolve the Doctor ObjectId from the logged-in user
+        const doctorProfile = await Doctor.findOne({ user: req.user._id });
+        if (!doctorProfile) return res.status(400).json({ message: 'Doctor profile not found' });
+        const doctorId = doctorProfile._id;
+
+        let treatment = await Treatment.findOne({ patient: patientId, doctor: doctorId, status: 'ongoing' });
         
         if (treatment) {
             if (condition) treatment.condition = condition;
@@ -31,7 +45,7 @@ const createOrUpdateTreatment = async (req, res) => {
         } else {
             treatment = await Treatment.create({
                 patient: patientId,
-                doctor: req.user._id,
+                doctor: doctorId,
                 condition,
                 medicines: medicines || [],
                 totalVisits: totalVisits || 3,
@@ -40,10 +54,15 @@ const createOrUpdateTreatment = async (req, res) => {
                 observation: 'pending'
             });
         }
-        res.json(treatment);
+        
+        const populated = await Treatment.findById(treatment._id)
+            .populate('doctor', 'name specialty profileImage')
+            .populate('patient', 'name email');
+        res.json(populated);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
 };
 
 module.exports = { getMyTreatments, createOrUpdateTreatment };
+

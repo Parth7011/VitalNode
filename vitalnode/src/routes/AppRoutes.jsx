@@ -21,6 +21,7 @@ import AboutPage from '../pages/AboutPage';
 import HowItWorksPage from '../pages/HowItWorksPage';
 import SpecialtiesPage from '../pages/SpecialtiesPage';
 import DoctorConsultationRoom from '../pages/DoctorConsultationRoom';
+import DoctorPrescriptions from '../pages/DoctorPrescriptions';
 
 // Main routing component that defines all application routes
 const AppRoutes = () => {
@@ -109,6 +110,9 @@ const AppRoutes = () => {
             } />
             <Route path="/doctor-consultation/:appointmentId" element={
                 <ProtectedRoute allowedRole="doctor"><DoctorConsultationRoom /></ProtectedRoute>
+            } />
+            <Route path="/doctor-prescriptions" element={
+                <ProtectedRoute allowedRole="doctor"><DoctorPrescriptions /></ProtectedRoute>
             } />
 
             {/* ── Admin Protected Routes ──────────────────────────── */}

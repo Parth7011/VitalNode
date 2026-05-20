@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useNotification } from './NotificationContext';
+import { url } from '../config/url';
 
 // Create context to manage user authentication state globally
 const AuthContext = createContext();
@@ -22,7 +23,7 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     // API URL
-    const API_URL = 'http://localhost:5000/api/auth';
+    const API_URL = `${url}/api/auth`;
 
     // Check for stored user session on component mount
     useEffect(() => {

@@ -1,9 +1,10 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import { url } from '../config/url';
 
 const AppointmentsContext = createContext();
 
-const API_URL = 'http://localhost:5000/api/appointments';
+const API_URL = `${url}/api/appointments`;
 const EMERGENCY_SURCHARGE = 500;
 
 export const AppointmentsProvider = ({ children }) => {

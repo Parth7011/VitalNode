@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { doctors as initialDoctors } from '../data/doctors';
+import { url } from '../config/url';
 
 /**
  * DoctorsContext — Single source of truth for all doctor data across the app.
@@ -18,7 +19,7 @@ export const DoctorsProvider = ({ children }) => {
     useEffect(() => {
         const fetchDoctors = async () => {
             try {
-                const res = await fetch('http://localhost:5000/api/doctors');
+                const res = await fetch(`${url}/api/doctors`);
                 const data = await res.json();
                 const mappedData = data.map(d => ({
                     ...d,
@@ -49,7 +50,7 @@ export const DoctorsProvider = ({ children }) => {
 
     const addDoctor = async (docData) => {
         try {
-            const res = await fetch('http://localhost:5000/api/doctors', {
+            const res = await fetch(`${url}/api/doctors`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -81,7 +82,7 @@ export const DoctorsProvider = ({ children }) => {
 
     const updateDoctor = async (id, updates) => {
         try {
-            const res = await fetch(`http://localhost:5000/api/doctors/${id}`, {
+            const res = await fetch(`${url}/api/doctors/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -115,7 +116,7 @@ export const DoctorsProvider = ({ children }) => {
 
     const deleteDoctor = async (id) => {
         try {
-            const res = await fetch(`http://localhost:5000/api/doctors/${id}`, {
+            const res = await fetch(`${url}/api/doctors/${id}`, {
                 method: 'DELETE',
                 headers: {
                     Authorization: `Bearer ${getToken()}`

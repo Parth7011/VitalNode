@@ -1,9 +1,10 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import { url } from '../config/url';
 
 const TreatmentsContext = createContext();
 
-const API_URL = 'http://localhost:5000/api/treatments';
+const API_URL = `${url}/api/treatments`;
 
 export const TreatmentsProvider = ({ children }) => {
     const { user } = useAuth();

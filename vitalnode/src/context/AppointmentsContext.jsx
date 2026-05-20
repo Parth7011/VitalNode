@@ -4,7 +4,7 @@ import { url } from '../config/url';
 
 const AppointmentsContext = createContext();
 
-const API_URL = `${url}/api/appointments`;
+const API_URL = url + `/api/appointments`;
 const EMERGENCY_SURCHARGE = 500;
 
 export const AppointmentsProvider = ({ children }) => {
@@ -30,7 +30,7 @@ export const AppointmentsProvider = ({ children }) => {
                     doctorImage: appt.doctor?.profileImage || '',
                     specialty: appt.doctor?.specialty || '',
                     problem: appt.reason || '',
-                    status: appt.status === 'accepted' ? 'approved' : appt.status, 
+                    status: appt.status === 'accepted' ? 'approved' : appt.status,
                 }));
                 setAppointments(mappedData);
             }
@@ -154,7 +154,7 @@ export const AppointmentsProvider = ({ children }) => {
         }
     };
 
-    const getPatientAppointments = (patientId) => 
+    const getPatientAppointments = (patientId) =>
         appointments.filter(a => a.patient?._id === patientId || a.patient === patientId);
 
     const getDoctorRequests = (doctorId) =>

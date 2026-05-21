@@ -100,7 +100,7 @@ const createDoctor = async (req, res) => {
       experience: parseInt(experience) || 0,
       consultationFee: parseInt(fee) || 500,
       rating: parseFloat(rating) || 5.0,
-      availableHours,
+      availableHours: availableHours || '10:00 AM - 5:00 PM',
       profileImage: image || ''
     });
 

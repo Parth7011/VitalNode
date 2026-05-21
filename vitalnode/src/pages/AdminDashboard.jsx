@@ -114,15 +114,19 @@ const AdminDashboard = () => {
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    const handleFormSubmit = (e) => {
+    const handleFormSubmit = async (e) => {
         e.preventDefault();
         const clampedRating = Math.min(5, parseFloat(form.rating) || 5.0);
-        if (editingDoc) {
-            updateDoctor(editingDoc.id, { ...form, rating: clampedRating });
-        } else {
-            addDoctor({ ...form, rating: clampedRating });
+        try {
+            if (editingDoc) {
+                await updateDoctor(editingDoc.id, { ...form, rating: clampedRating });
+            } else {
+                await addDoctor({ ...form, rating: clampedRating });
+            }
+            closePanel();
+        } catch (err) {
+            alert(err.message || 'Failed to save doctor. Please try again.');
         }
-        closePanel();
     };
 
     const confirmDelete = (doc) => setDeleteTarget(doc);

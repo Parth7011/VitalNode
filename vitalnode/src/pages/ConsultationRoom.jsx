@@ -2,112 +2,98 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import VideoPanel from '../components/consultation/VideoPanel';
 import ChatBox from '../components/consultation/ChatBox';
-import { doctors } from '../data/doctors';
 import { useNotification } from '../context/NotificationContext';
 import { useAppointments } from '../context/AppointmentsContext';
-import { useTreatments } from '../context/TreatmentsContext';
+import { useDoctors } from '../context/DoctorsContext';
+import { useSocket } from '../context/SocketContext';
+import useWebRTC from '../hooks/useWebRTC';
 
-// Simulated doctor responses based on specialty
-const doctorResponses = {
-    'Cardiology': {
-        condition: 'Hypertension Management',
-        medicines: ['Amlodipine 5mg (once daily)', 'Losartan 50mg (once daily)'],
-        notes: 'Blood pressure slightly elevated. Continue medication and follow a low-sodium diet. Monitor BP twice daily.',
-        observation: 'improvement',
-    },
-    'Neurology': {
-        condition: 'Chronic Migraine Treatment',
-        medicines: ['Sumatriptan 50mg (as needed)', 'Propranolol 40mg (twice daily)'],
-        notes: 'Migraine episodes reducing in frequency. Maintain trigger journal and ensure adequate sleep.',
-        observation: 'improvement',
-    },
-    'Dermatology': {
-        condition: 'Eczema Flare-Up Treatment',
-        medicines: ['Hydrocortisone cream 1% (twice daily)', 'Cetrizine 10mg (once daily)'],
-        notes: 'Skin inflammation reducing. Continue moisturizing routine and avoid known irritants.',
-        observation: 'improvement',
-    },
-    'Orthopedics': {
-        condition: 'Joint Pain Assessment',
-        medicines: ['Ibuprofen 400mg (as needed)', 'Calcium + Vitamin D supplement'],
-        notes: 'Mild joint inflammation observed. Physical therapy recommended. Follow-up in 2 weeks.',
-        observation: 'stable',
-    },
-    'default': {
-        condition: 'General Health Consultation',
-        medicines: ['Multivitamin supplement (once daily)'],
-        notes: 'Overall health is satisfactory. Continue healthy lifestyle and schedule regular check-ups.',
-        observation: 'stable',
-    }
-};
-
-// ConsultationRoom component for conducting video calls and chat between patient and doctor
+// ConsultationRoom component — Patient side with real WebRTC video calling
 const ConsultationRoom = () => {
     const { appointmentId } = useParams();
     const navigate = useNavigate();
     const { showNotification } = useNotification();
+    const { doctors, loading: doctorsLoading } = useDoctors();
     const [doctor, setDoctor] = useState(null);
     const [appointment, setAppointment] = useState(null);
-    // State to manage media controls (microphone and camera)
-    const [controls, setControls] = useState({ mic: true, camera: true });
 
-    const { appointments, completeAppointment } = useAppointments();
+    const { appointments, completeAppointment, hasFetched } = useAppointments();
 
-    // Load ongoing appointment details to fetch the corresponding doctor
+    // ── WebRTC: Patient is the initiator (creates the offer) ──────────────────
+    const { socket, joinRoom } = useSocket();
+    const webrtcRoomId = `appt-${appointmentId}`;
+
+    const {
+        localStream,
+        remoteStream,
+        toggleMic,
+        toggleCamera,
+        micOn,
+        cameraOn,
+        connectionState,
+    } = useWebRTC({
+        socket,
+        roomId: webrtcRoomId,
+        isInitiator: true,   // Patient creates the offer
+        onRemoteHangup: () => {
+            showNotification('The doctor has ended the call.', 'info');
+            navigate('/my-treatments');
+        }
+    });
+
+    // Join the socket room for WebRTC signaling
     useEffect(() => {
+        if (socket && appointmentId) {
+            joinRoom(webrtcRoomId);
+        }
+    }, [socket, appointmentId]);
+
+    // Load appointment details and find corresponding doctor
+    useEffect(() => {
+        if (!hasFetched || doctorsLoading) return;
+
         const apt = appointments.find(a => a.id.toString() === appointmentId);
         if (apt) {
             setAppointment(apt);
-            const found = doctors.find(d => d.id === apt.doctorId);
+            // Find doctor from context (supports both id and _id)
+            const found = doctors.find(d =>
+                d.id === apt.doctorId || d.id === apt.doctor?._id || d._id === apt.doctorId
+            );
             setDoctor(found);
         } else {
             navigate('/appointments');
         }
-    }, [appointmentId, navigate, appointments]);
+    }, [appointmentId, navigate, appointments, doctors, hasFetched, doctorsLoading]);
 
-    const { addOrUpdateTreatment } = useTreatments();
-
-    // Handle ending the consultation — update treatment data with doctor feedback
     const handleEndCall = async () => {
-        if (!appointment || !doctor) {
-            navigate('/appointments');
-            return;
+        if (socket) {
+            socket.emit('webrtc-hangup', { roomId: webrtcRoomId });
         }
-
-        // Get simulated doctor response based on specialty
-        const response = doctorResponses[doctor.specialty] || doctorResponses['default'];
-
-        // Update the appointment status to 'completed' via context
-        await completeAppointment(appointment.id); // Note: appointment.id is already the string/number id from DB
-        
-        try {
-            await addOrUpdateTreatment({
-                patientId: appointment.patient?._id || appointment.patient,
-                condition: response.condition,
-                medicines: response.medicines,
-                notes: response.notes,
-                observation: response.observation,
-            });
-            showNotification('Consultation completed. Treatment updated.', 'success');
-        } catch (error) {
-            console.error('Failed to update treatment', error);
-            showNotification('Consultation completed, but failed to update treatment.', 'error');
-        }
-
+        if (!appointment) return navigate('/appointments');
+        await completeAppointment(appointment.id);
+        showNotification('Consultation ended.', 'info');
         navigate('/my-treatments');
     };
+
+    if (!hasFetched || doctorsLoading) {
+        return (
+            <div className="h-screen bg-bg-soft flex items-center justify-center">
+                <div className="w-12 h-12 border-4 border-primary-green border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="h-screen bg-bg-soft flex flex-col">
             {/* Header */}
             <div className="px-8 py-4 bg-white border-b border-gray-100 flex justify-between items-center shrink-0">
                 <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-primary-green rounded-xl flex items-center justify-center text-white font-bold shadow-lg">V</div>
+                    <div className="w-10 h-10 bg-primary-green rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg">V</div>
                     <div>
                         <h2 className="text-md font-bold text-text-dark">Ongoing Consultation</h2>
                         <div className="flex items-center gap-2">
                             <span className="w-1.5 h-1.5 bg-primary-green rounded-full shadow-[0_0_8px_rgba(43,182,115,0.8)]" />
-                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Secure & Encrypted</span>
+                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Secure &amp; Encrypted</span>
                         </div>
                     </div>
                 </div>
@@ -123,16 +109,23 @@ const ConsultationRoom = () => {
             <div className="flex-1 min-h-0 p-6 flex gap-6 overflow-hidden">
                 {/* Video Area */}
                 <div className="flex-[2.5] flex flex-col h-full overflow-hidden">
-                    <VideoPanel doctor={doctor} />
+                    <VideoPanel
+                        remoteStream={remoteStream}
+                        localStream={localStream}
+                        connectionState={connectionState}
+                        doctor={doctor}
+                        isDoctor={false}
+                    />
 
                     {/* Controls */}
                     <div className="mt-6 flex justify-center gap-6">
                         <button
-                            onClick={() => setControls(prev => ({ ...prev, mic: !prev.mic }))}
-                            className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-lg ${controls.mic ? 'bg-white text-gray-400 hover:text-text-dark' : 'bg-red-500 text-white shadow-red-200'
+                            onClick={toggleMic}
+                            className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-lg ${micOn ? 'bg-white text-gray-400 hover:text-text-dark' : 'bg-red-500 text-white shadow-red-200'
                                 }`}
+                            title={micOn ? 'Mute Microphone' : 'Unmute Microphone'}
                         >
-                            {controls.mic ? (
+                            {micOn ? (
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                                 </svg>
@@ -144,9 +137,10 @@ const ConsultationRoom = () => {
                             )}
                         </button>
                         <button
-                            onClick={() => setControls(prev => ({ ...prev, camera: !prev.camera }))}
-                            className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-lg ${controls.camera ? 'bg-white text-gray-400 hover:text-text-dark' : 'bg-red-500 text-white shadow-red-200'
+                            onClick={toggleCamera}
+                            className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-lg ${cameraOn ? 'bg-white text-gray-400 hover:text-text-dark' : 'bg-red-500 text-white shadow-red-200'
                                 }`}
+                            title={cameraOn ? 'Turn Off Camera' : 'Turn On Camera'}
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -155,6 +149,7 @@ const ConsultationRoom = () => {
                         <button
                             onClick={handleEndCall}
                             className="w-20 h-14 bg-red-600 text-white rounded-2xl flex items-center justify-center hover:bg-red-700 transition-all shadow-xl shadow-red-200"
+                            title="End Call"
                         >
                             <svg className="w-7 h-7 transform rotate-[135deg]" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />

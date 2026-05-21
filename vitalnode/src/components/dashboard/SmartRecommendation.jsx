@@ -1,8 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDoctors } from '../../context/DoctorsContext';
 
 const SmartRecommendation = () => {
     const navigate = useNavigate();
+    const { doctors } = useDoctors();
+
+    const getDoctorImage = (doc) => {
+        if (!doctors || doctors.length === 0) return doc.image;
+        const cleanName = (name) => name.toLowerCase().replace(/^dr\.\s*/, '').trim();
+        const docClean = cleanName(doc.name);
+        const matched = doctors.find(d => cleanName(d.name) === docClean);
+        return matched?.image || matched?.profileImage || doc.image || '/images/placeholder-doctor.png';
+    };
     const [symptoms, setSymptoms] = useState('');
     const [recommendation, setRecommendation] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -127,7 +137,15 @@ const SmartRecommendation = () => {
                             {recommendation.doctors.map(doc => (
                                 <div key={doc.id} className="flex items-center justify-between p-4 border border-gray-100 rounded-2xl hover:border-primary-green transition-colors">
                                     <div className="flex items-center gap-3">
-                                        <img src={doc.image} alt={doc.name} className="w-10 h-10 rounded-xl" />
+                                        <img 
+                                            src={getDoctorImage(doc)} 
+                                            alt={doc.name} 
+                                            className="w-10 h-10 rounded-xl object-cover" 
+                                            onError={(e) => {
+                                                e.target.onerror = null;
+                                                e.target.src = '/images/placeholder-doctor.png';
+                                            }}
+                                        />
                                         <div>
                                             <h4 className="font-bold text-text-dark text-sm">{doc.name}</h4>
                                             <p className="text-[10px] text-gray-400 uppercase tracking-wider">{recommendation.specialty}</p>

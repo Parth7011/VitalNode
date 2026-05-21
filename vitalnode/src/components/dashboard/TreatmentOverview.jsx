@@ -144,7 +144,31 @@ const TreatmentOverview = ({ fullPage = false }) => {
                                         {/* Avatar */}
                                         <div className="shrink-0">
                                             <div className="w-14 h-14 bg-gray-100 text-primary-green flex items-center justify-center font-bold text-xl rounded-2xl overflow-hidden shadow-sm ring-2 ring-gray-50">
-                                                {displayImage ? <img src={displayImage} alt={displayName} className="w-full h-full object-cover" /> : displayName[0]}
+                                                {displayImage ? (
+                                                    <img 
+                                                        src={displayImage} 
+                                                        alt={displayName} 
+                                                        className="w-full h-full object-cover" 
+                                                        onError={(e) => {
+                                                            e.target.onerror = null;
+                                                            if (user?.role === 'doctor') {
+                                                                e.target.classList.add('hidden');
+                                                                const fallback = e.target.parentElement.querySelector('.avatar-fallback');
+                                                                if (fallback) fallback.classList.remove('hidden');
+                                                            } else {
+                                                                e.target.src = '/images/placeholder-doctor.png';
+                                                                e.target.onerror = () => {
+                                                                    e.target.classList.add('hidden');
+                                                                    const fallback = e.target.parentElement.querySelector('.avatar-fallback');
+                                                                    if (fallback) fallback.classList.remove('hidden');
+                                                                };
+                                                            }
+                                                        }}
+                                                    />
+                                                ) : null}
+                                                <span className={`avatar-fallback ${displayImage ? 'hidden' : ''}`}>
+                                                    {displayName?.[0] || 'P'}
+                                                </span>
                                             </div>
                                         </div>
 

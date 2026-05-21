@@ -121,6 +121,24 @@ const updateAppointmentStatus = async (req, res) => {
         }
     }
 
+    // When appointment is marked as completed, update the treatment progress
+    if (req.body.status === 'completed') {
+        const Treatment = require('../models/Treatment');
+        const existingTreatment = await Treatment.findOne({
+            patient: appointment.patient,
+            doctor: appointment.doctor,
+            status: 'ongoing'
+        });
+        if (existingTreatment) {
+            existingTreatment.completedVisits += 1;
+            existingTreatment.lastVisit = new Date();
+            if (existingTreatment.completedVisits >= existingTreatment.totalVisits) {
+                existingTreatment.status = 'completed';
+            }
+            await existingTreatment.save();
+        }
+    }
+
     const updated = await appointment.save();
     const populated = await Appointment.findById(updated._id).populate('patient').populate('doctor');
 

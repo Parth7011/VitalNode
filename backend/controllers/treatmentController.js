@@ -25,34 +25,44 @@ const createOrUpdateTreatment = async (req, res) => {
     try {
         const { patientId, condition, medicines, totalVisits, completedVisits, notes, status, observation } = req.body;
         
-        // Resolve the Doctor ObjectId from the logged-in user
-        const doctorProfile = await Doctor.findOne({ user: req.user._id });
-        if (!doctorProfile) return res.status(400).json({ message: 'Doctor profile not found' });
-        const doctorId = doctorProfile._id;
-
-        let treatment = await Treatment.findOne({ patient: patientId, doctor: doctorId, status: 'ongoing' });
+        let treatment;
         
-        if (treatment) {
-            if (condition) treatment.condition = condition;
-            if (medicines) treatment.medicines = medicines;
-            if (totalVisits !== undefined) treatment.totalVisits = totalVisits;
-            if (completedVisits !== undefined) treatment.completedVisits = completedVisits;
-            if (notes !== undefined) treatment.notes = notes;
+        // If the user is a patient, they can only update the status of their own ongoing treatment
+        if (req.user.role === 'patient') {
+            treatment = await Treatment.findOne({ patient: req.user._id, status: 'ongoing' });
+            if (!treatment) return res.status(404).json({ message: 'No ongoing treatment found' });
             if (status) treatment.status = status;
-            if (observation) treatment.observation = observation;
-            
             await treatment.save();
         } else {
-            treatment = await Treatment.create({
-                patient: patientId,
-                doctor: doctorId,
-                condition,
-                medicines: medicines || [],
-                totalVisits: totalVisits || 3,
-                notes: notes || '',
-                status: 'ongoing',
-                observation: 'pending'
-            });
+            // Resolve the Doctor ObjectId from the logged-in user
+            const doctorProfile = await Doctor.findOne({ user: req.user._id });
+            if (!doctorProfile) return res.status(400).json({ message: 'Doctor profile not found' });
+            const doctorId = doctorProfile._id;
+
+            treatment = await Treatment.findOne({ patient: patientId, doctor: doctorId, status: 'ongoing' });
+            
+            if (treatment) {
+                if (condition) treatment.condition = condition;
+                if (medicines) treatment.medicines = medicines;
+                if (totalVisits !== undefined) treatment.totalVisits = totalVisits;
+                if (completedVisits !== undefined) treatment.completedVisits = completedVisits;
+                if (notes !== undefined) treatment.notes = notes;
+                if (status) treatment.status = status;
+                if (observation) treatment.observation = observation;
+                
+                await treatment.save();
+            } else {
+                treatment = await Treatment.create({
+                    patient: patientId,
+                    doctor: doctorId,
+                    condition,
+                    medicines: medicines || [],
+                    totalVisits: totalVisits || 3,
+                    notes: notes || '',
+                    status: 'ongoing',
+                    observation: 'pending'
+                });
+            }
         }
         
         const populated = await Treatment.findById(treatment._id)

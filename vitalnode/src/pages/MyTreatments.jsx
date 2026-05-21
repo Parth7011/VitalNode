@@ -20,7 +20,15 @@ const MyTreatments = () => {
                             <p className="text-gray-400 text-sm mt-1">Track your ongoing and completed treatments in one place.</p>
                         </div>
                         <div className="w-12 h-12 bg-primary-green rounded-2xl overflow-hidden shadow-lg border-2 border-white shadow-primary-green/20">
-                            <img src={`https://ui-avatars.com/api/?name=${user?.name}&background=2BB673&color=fff`} alt="Profile" />
+                            <img 
+                                src={user?.profileImage || `https://ui-avatars.com/api/?name=${user?.name}&background=2BB673&color=fff`} 
+                                alt="Profile" 
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = `https://ui-avatars.com/api/?name=${user?.name}&background=2BB673&color=fff`;
+                                }}
+                            />
                         </div>
                     </div>
 

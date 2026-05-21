@@ -4,44 +4,151 @@ import VideoPanel from '../components/consultation/VideoPanel';
 import ChatBox from '../components/consultation/ChatBox';
 import { useNotification } from '../context/NotificationContext';
 import { useAppointments } from '../context/AppointmentsContext';
+import { useTreatments } from '../context/TreatmentsContext';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
+import useWebRTC from '../hooks/useWebRTC';
+
+// Simulated doctor responses based on specialty
+const doctorResponses = {
+    'Cardiology': {
+        condition: 'Hypertension Management',
+        medicines: ['Amlodipine 5mg (once daily)', 'Losartan 50mg (once daily)'],
+        notes: 'Blood pressure slightly elevated. Continue medication and follow a low-sodium diet. Monitor BP twice daily.',
+        observation: 'improvement',
+    },
+    'Neurology': {
+        condition: 'Chronic Migraine Treatment',
+        medicines: ['Sumatriptan 50mg (as needed)', 'Propranolol 40mg (twice daily)'],
+        notes: 'Migraine episodes reducing in frequency. Maintain trigger journal and ensure adequate sleep.',
+        observation: 'improvement',
+    },
+    'Dermatology': {
+        condition: 'Eczema Flare-Up Treatment',
+        medicines: ['Hydrocortisone cream 1% (twice daily)', 'Cetrizine 10mg (once daily)'],
+        notes: 'Skin inflammation reducing. Continue moisturizing routine and avoid known irritants.',
+        observation: 'improvement',
+    },
+    'Orthopedics': {
+        condition: 'Joint Pain Assessment',
+        medicines: ['Ibuprofen 400mg (as needed)', 'Calcium + Vitamin D supplement'],
+        notes: 'Mild joint inflammation observed. Physical therapy recommended. Follow-up in 2 weeks.',
+        observation: 'stable',
+    },
+    'default': {
+        condition: 'General Health Consultation',
+        medicines: ['Multivitamin supplement (once daily)'],
+        notes: 'Overall health is satisfactory. Continue healthy lifestyle and schedule regular check-ups.',
+        observation: 'stable',
+    }
+};
 
 /**
  * DoctorConsultationRoom — the doctor's side of the live consultation.
  * Shares the same appointment ID room as the patient's ConsultationRoom,
- * enabling real-time Socket.io chat between both parties.
+ * enabling real-time Socket.io chat and WebRTC video calling between both parties.
  */
 const DoctorConsultationRoom = () => {
     const { appointmentId } = useParams();
     const navigate = useNavigate();
     const { showNotification } = useNotification();
-    const { user } = useAuth();
-    const { appointments, completeAppointment } = useAppointments();
+    const { user, doctorProfile } = useAuth();
+    const { appointments, completeAppointment, hasFetched } = useAppointments();
+    const { addOrUpdateTreatment } = useTreatments();
     const [appointment, setAppointment] = useState(null);
-    const [controls, setControls] = useState({ mic: true, camera: true });
+
+    // ── WebRTC: Doctor is NOT the initiator (waits for offer) ─────────────────
+    const { socket, joinRoom } = useSocket();
+    const webrtcRoomId = `appt-${appointmentId}`;
+
+    const {
+        localStream,
+        remoteStream,
+        toggleMic,
+        toggleCamera,
+        micOn,
+        cameraOn,
+        connectionState,
+    } = useWebRTC({
+        socket,
+        roomId: webrtcRoomId,
+        isInitiator: false,   // Doctor waits for the patient's offer
+        onRemoteHangup: async () => {
+            showNotification('The patient has left the call. Saving session and redirecting...', 'info');
+            if (appointment) {
+                const specialty = user?.specialty || doctorProfile?.specialty || 'default';
+                const response = doctorResponses[specialty] || doctorResponses['default'];
+                await completeAppointment(appointment.id);
+                try {
+                    await addOrUpdateTreatment({
+                        patientId: appointment.patient?._id || appointment.patient,
+                        condition: response.condition,
+                        medicines: response.medicines,
+                        notes: response.notes,
+                        observation: response.observation,
+                    });
+                } catch (error) {
+                    console.error('Failed to update treatment on remote hangup', error);
+                }
+            }
+            navigate('/doctor-dashboard');
+        }
+    });
+
+    // Join the socket room for WebRTC signaling
+    useEffect(() => {
+        if (socket && appointmentId) {
+            joinRoom(webrtcRoomId);
+        }
+    }, [socket, appointmentId]);
 
     useEffect(() => {
+        if (!hasFetched) return;
+
         const apt = appointments.find((a) => a.id.toString() === appointmentId);
         if (apt) {
             setAppointment(apt);
         } else {
             navigate('/doctor-dashboard');
         }
-    }, [appointmentId, appointments, navigate]);
+    }, [appointmentId, appointments, navigate, hasFetched]);
 
-    const handleEndCall = () => {
+    const handleEndCall = async () => {
+        if (socket) {
+            socket.emit('webrtc-hangup', { roomId: webrtcRoomId });
+        }
         if (!appointment) return navigate('/doctor-dashboard');
-        completeAppointment(parseInt(appointmentId));
-        showNotification('Consultation session ended. Appointment marked complete.', 'success');
+        
+        // Use the doctor's specialty (or default) to generate a simulated response
+        const specialty = user?.specialty || doctorProfile?.specialty || 'default';
+        const response = doctorResponses[specialty] || doctorResponses['default'];
+
+        await completeAppointment(appointment.id);
+        
+        try {
+            await addOrUpdateTreatment({
+                patientId: appointment.patient?._id || appointment.patient,
+                condition: response.condition,
+                medicines: response.medicines,
+                notes: response.notes,
+                observation: response.observation,
+            });
+            showNotification('Consultation session ended. Treatment recorded successfully.', 'success');
+        } catch (error) {
+            console.error('Failed to update treatment', error);
+            showNotification('Consultation ended, but failed to record treatment.', 'error');
+        }
+
         navigate('/doctor-dashboard');
     };
 
-    // Simulated doctor video (avatar panel)
-    const doctorAsPanel = {
-        name: user?.name || 'Doctor',
-        specialty: 'Consulting',
-        image: null,
-    };
+    if (!hasFetched) {
+        return (
+            <div className="h-screen bg-bg-soft flex items-center justify-center">
+                <div className="w-12 h-12 border-4 border-primary-green border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="h-screen bg-bg-soft flex flex-col">
@@ -78,7 +185,13 @@ const DoctorConsultationRoom = () => {
             <div className="flex-1 min-h-0 p-6 flex gap-6 overflow-hidden">
                 {/* Video Area */}
                 <div className="flex-[2.5] flex flex-col h-full overflow-hidden">
-                    <VideoPanel doctor={doctorAsPanel} />
+                    <VideoPanel
+                        remoteStream={remoteStream}
+                        localStream={localStream}
+                        connectionState={connectionState}
+                        doctor={{ name: appointment?.patientName || 'Patient' }} // Pass patient info for fallback
+                        isDoctor={true}
+                    />
 
                     {/* Patient Info Card */}
                     {appointment && (
@@ -101,13 +214,13 @@ const DoctorConsultationRoom = () => {
                     {/* Controls */}
                     <div className="mt-4 flex justify-center gap-6">
                         <button
-                            onClick={() => setControls((prev) => ({ ...prev, mic: !prev.mic }))}
+                            onClick={toggleMic}
                             className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-lg ${
-                                controls.mic ? 'bg-white text-gray-400 hover:text-text-dark' : 'bg-red-500 text-white shadow-red-200'
+                                micOn ? 'bg-white text-gray-400 hover:text-text-dark' : 'bg-red-500 text-white shadow-red-200'
                             }`}
-                            title={controls.mic ? 'Mute' : 'Unmute'}
+                            title={micOn ? 'Mute' : 'Unmute'}
                         >
-                            {controls.mic ? (
+                            {micOn ? (
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                                 </svg>
@@ -120,11 +233,11 @@ const DoctorConsultationRoom = () => {
                         </button>
 
                         <button
-                            onClick={() => setControls((prev) => ({ ...prev, camera: !prev.camera }))}
+                            onClick={toggleCamera}
                             className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-lg ${
-                                controls.camera ? 'bg-white text-gray-400 hover:text-text-dark' : 'bg-red-500 text-white shadow-red-200'
+                                cameraOn ? 'bg-white text-gray-400 hover:text-text-dark' : 'bg-red-500 text-white shadow-red-200'
                             }`}
-                            title={controls.camera ? 'Turn off camera' : 'Turn on camera'}
+                            title={cameraOn ? 'Turn off camera' : 'Turn on camera'}
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />

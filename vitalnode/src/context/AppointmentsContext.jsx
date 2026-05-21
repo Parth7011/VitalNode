@@ -11,9 +11,13 @@ export const AppointmentsProvider = ({ children }) => {
     const { user } = useAuth();
     const [appointments, setAppointments] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [hasFetched, setHasFetched] = useState(false);
 
     const fetchAppointments = async () => {
-        if (!user || !user.token) return;
+        if (!user || !user.token) {
+            setHasFetched(false);
+            return;
+        }
         setLoading(true);
         try {
             const res = await fetch(API_URL, {
@@ -38,6 +42,7 @@ export const AppointmentsProvider = ({ children }) => {
             console.error('Failed to fetch appointments:', error);
         } finally {
             setLoading(false);
+            setHasFetched(true);
         }
     };
 
@@ -164,6 +169,7 @@ export const AppointmentsProvider = ({ children }) => {
         <AppointmentsContext.Provider value={{
             appointments,
             loading,
+            hasFetched,
             requestAppointment,
             approveAppointment,
             rejectAppointment,

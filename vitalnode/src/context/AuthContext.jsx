@@ -27,11 +27,22 @@ export const AuthProvider = ({ children }) => {
 
     // Check for stored user session on component mount
     useEffect(() => {
-        const storedUser = localStorage.getItem('vitalnode_user');
+        // Clear any stale data from old localStorage-based sessions
+        localStorage.removeItem('vitalnode_user');
+
+        const storedUser = sessionStorage.getItem('vitalnode_user');
         if (storedUser) {
             const parsedUser = JSON.parse(storedUser);
-            setUser(parsedUser);
-            setIsAuthenticated(true);
+            // If the user is a doctor but doesn't have a profile image in the session,
+            // the session is stale from before the profileImage update. Clear it.
+            if (parsedUser.role === 'doctor' && !parsedUser.profileImage) {
+                sessionStorage.removeItem('vitalnode_user');
+                setUser(null);
+                setIsAuthenticated(false);
+            } else {
+                setUser(parsedUser);
+                setIsAuthenticated(true);
+            }
         }
         setLoading(false);
     }, []);
@@ -51,7 +62,7 @@ export const AuthProvider = ({ children }) => {
             }
 
             const userWithToken = { ...data, id: data._id }; 
-            localStorage.setItem('vitalnode_user', JSON.stringify(userWithToken));
+            sessionStorage.setItem('vitalnode_user', JSON.stringify(userWithToken));
             setUser(userWithToken);
             setIsAuthenticated(true);
             return userWithToken;
@@ -71,7 +82,7 @@ export const AuthProvider = ({ children }) => {
                 email: 'admin@vitalnode.internal',
                 token: 'simulated-admin-jwt-token',
             };
-            localStorage.setItem('vitalnode_user', JSON.stringify(adminUser));
+            sessionStorage.setItem('vitalnode_user', JSON.stringify(adminUser));
             setUser(adminUser);
             setIsAuthenticated(true);
             showNotification('Welcome back, Admin!', 'success');
@@ -95,7 +106,7 @@ export const AuthProvider = ({ children }) => {
             }
 
             const userWithToken = { ...data, id: data._id };
-            localStorage.setItem('vitalnode_user', JSON.stringify(userWithToken));
+            sessionStorage.setItem('vitalnode_user', JSON.stringify(userWithToken));
             setUser(userWithToken);
             setIsAuthenticated(true);
             return userWithToken;
@@ -107,13 +118,13 @@ export const AuthProvider = ({ children }) => {
     // Update user profile with additional data
     const updateProfile = (profileData) => {
         const updatedUser = { ...user, ...profileData, profileComplete: true };
-        localStorage.setItem('vitalnode_user', JSON.stringify(updatedUser));
+        sessionStorage.setItem('vitalnode_user', JSON.stringify(updatedUser));
         setUser(updatedUser);
     };
 
     // Logout — clears session from state and localStorage
     const logout = () => {
-        localStorage.removeItem('vitalnode_user');
+        sessionStorage.removeItem('vitalnode_user');
         setUser(null);
         setIsAuthenticated(false);
         showNotification('Logged out successfully', 'success');

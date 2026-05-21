@@ -388,8 +388,22 @@ const DoctorDashboard = () => {
                             <p className="text-white/80 font-medium">Have a nice {today.toLocaleDateString('en-US', { weekday: 'long' })}!</p>
                         </div>
                         <div className="relative z-10 hidden md:block">
-                            <div className="w-32 h-32 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border-4 border-white/20">
-                                <span className="text-6xl">👨‍⚕️</span>
+                            <div className="w-32 h-32 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border-4 border-white/20 overflow-hidden">
+                                {user?.profileImage ? (
+                                    <img 
+                                        src={user.profileImage} 
+                                        alt={user.name} 
+                                        className="w-full h-full object-cover rounded-full"
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = '';
+                                            e.target.classList.add('hidden');
+                                            const fallback = e.target.parentElement.querySelector('.emoji-fallback');
+                                            if (fallback) fallback.classList.remove('hidden');
+                                        }}
+                                    />
+                                ) : null}
+                                <span className={`text-6xl emoji-fallback ${user?.profileImage ? 'hidden' : ''}`}>👨‍⚕️</span>
                             </div>
                         </div>
                     </div>
@@ -611,7 +625,23 @@ const DoctorDashboard = () => {
                         </div>
                         <div className="flex items-center gap-4 mb-6">
                             <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-primary-green font-black text-2xl shadow-inner overflow-hidden border-2 border-white/20">
-                                {(user?.name?.[0] || 'D').toUpperCase()}
+                                {user?.profileImage ? (
+                                    <img 
+                                        src={user.profileImage} 
+                                        alt={user.name} 
+                                        className="w-full h-full object-cover rounded-full"
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = '';
+                                            e.target.classList.add('hidden');
+                                            const fallback = e.target.parentElement.querySelector('.initials-fallback');
+                                            if (fallback) fallback.classList.remove('hidden');
+                                        }}
+                                    />
+                                ) : null}
+                                <span className={`initials-fallback ${user?.profileImage ? 'hidden' : ''}`}>
+                                    {(user?.name?.[0] || 'D').toUpperCase()}
+                                </span>
                             </div>
                             <div>
                                 <h3 className="font-bold text-lg">{user?.name || 'Doctor'}</h3>

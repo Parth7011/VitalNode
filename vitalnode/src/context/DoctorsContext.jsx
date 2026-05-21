@@ -27,6 +27,7 @@ export const DoctorsProvider = ({ children }) => {
                     image: d.profileImage, // Map profileImage to image
                     fee: d.consultationFee, // Map consultationFee to fee
                     qualification: d.qualification || 'MBBS, MD',
+                    availableHours: d.availableHours || '10:00 AM - 5:00 PM',
                     patientsTreated: d.patientsTreated || '500+',
                 }));
                 setDoctors(mappedData);
@@ -43,7 +44,7 @@ export const DoctorsProvider = ({ children }) => {
     // ── CRUD helpers used by AdminDashboard ────────────────────────────────────
 
     const getToken = () => {
-        const userStr = localStorage.getItem('vitalnode_user');
+        const userStr = sessionStorage.getItem('vitalnode_user');
         if (userStr) return JSON.parse(userStr).token;
         return '';
     };
@@ -71,12 +72,14 @@ export const DoctorsProvider = ({ children }) => {
                 image: data.profileImage,
                 fee: data.consultationFee,
                 qualification: data.qualification || 'MBBS, MD',
+                availableHours: data.availableHours || '10:00 AM - 5:00 PM',
                 patientsTreated: data.patientsTreated || '0+',
             };
             setDoctors((prev) => [newDoc, ...prev]);
             return newDoc;
         } catch (err) {
-            console.error(err);
+            console.error('addDoctor error:', err);
+            throw err;
         }
     };
 
@@ -110,7 +113,8 @@ export const DoctorsProvider = ({ children }) => {
                 )
             );
         } catch (err) {
-            console.error(err);
+            console.error('updateDoctor error:', err);
+            throw err;
         }
     };
 
@@ -128,12 +132,13 @@ export const DoctorsProvider = ({ children }) => {
             }
             setDoctors((prev) => prev.filter((d) => d.id !== id));
         } catch (err) {
-            console.error(err);
+            console.error('deleteDoctor error:', err);
+            throw err;
         }
     };
 
     return (
-        <DoctorsContext.Provider value={{ doctors, addDoctor, updateDoctor, deleteDoctor }}>
+        <DoctorsContext.Provider value={{ doctors, loading, addDoctor, updateDoctor, deleteDoctor }}>
             {children}
         </DoctorsContext.Provider>
     );

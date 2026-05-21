@@ -98,7 +98,15 @@ const PatientDashboard = () => {
                             )}
 
                             <div className="w-12 h-12 bg-primary-green rounded-2xl overflow-hidden shadow-lg border-2 border-white shadow-primary-green/20">
-                                <img src={`https://ui-avatars.com/api/?name=${user?.name}&background=2BB673&color=fff`} alt="Profile" />
+                                <img 
+                                    src={user?.profileImage || `https://ui-avatars.com/api/?name=${user?.name}&background=2BB673&color=fff`} 
+                                    alt="Profile" 
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = `https://ui-avatars.com/api/?name=${user?.name}&background=2BB673&color=fff`;
+                                    }}
+                                />
                             </div>
                         </div>
                     </div>
@@ -149,7 +157,15 @@ const PatientDashboard = () => {
                                         {upcoming.map(app => (
                                             <div key={app.id} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center gap-6 hover:shadow-md transition-shadow group">
                                                 <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-sm shrink-0">
-                                                    <img src={app.doctorImage} alt={app.doctorName} className="w-full h-full object-cover" />
+                                                    <img 
+                                                        src={app.doctorImage || '/images/placeholder-doctor.png'} 
+                                                        alt={app.doctorName} 
+                                                        className="w-full h-full object-cover" 
+                                                        onError={(e) => {
+                                                            e.target.onerror = null;
+                                                            e.target.src = '/images/placeholder-doctor.png';
+                                                        }}
+                                                    />
                                                 </div>
                                                 <div className="flex-1">
                                                     <h3 className="font-bold text-text-dark">{app.doctorName}</h3>
@@ -204,7 +220,15 @@ const PatientDashboard = () => {
                                         {past.map(app => (
                                             <div key={app.id} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center gap-6 grayscale">
                                                 <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-sm shrink-0">
-                                                    <img src={app.doctorImage} alt={app.doctorName} className="w-full h-full object-cover" />
+                                                    <img 
+                                                        src={app.doctorImage || '/images/placeholder-doctor.png'} 
+                                                        alt={app.doctorName} 
+                                                        className="w-full h-full object-cover" 
+                                                        onError={(e) => {
+                                                            e.target.onerror = null;
+                                                            e.target.src = '/images/placeholder-doctor.png';
+                                                        }}
+                                                    />
                                                 </div>
                                                 <div className="flex-1">
                                                     <h3 className="font-bold text-text-dark">{app.doctorName}</h3>

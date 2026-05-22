@@ -276,20 +276,32 @@ const DoctorDashboard = () => {
         id: p.id,
         title: 'New Request',
         desc: `Appointment requested by ${p.patientName}`,
-        time: new Date(p.requestedAt).toLocaleDateString(),
+        // Backend uses `createdAt` (timestamps:true), not `requestedAt`
+        time: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Recently',
         type: p.isEmergency ? 'urgent' : 'new'
     }));
 
-    // Date Logic
+    // ── Date Logic (timezone-safe: use local date parts, not UTC ISO string) ──
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-    
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
-    const nextWeek = new Date(today);
-    nextWeek.setDate(nextWeek.getDate() + 7);
+    // Helper: get a local YYYY-MM-DD string without UTC offset shifting the day
+    const toLocalDateStr = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    };
+
+    const todayStr = toLocalDateStr(today);
+
+    const tomorrowDate = new Date(today);
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrowStr = toLocalDateStr(tomorrowDate);
+
+    // Start of today (midnight) and 7 days later for week range
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfWeek = new Date(startOfToday);
+    endOfWeek.setDate(endOfWeek.getDate() + 7);
 
     // Schedule Filter Logic (Busyness Chart)
     let filteredAppointments = [];
@@ -299,8 +311,9 @@ const DoctorDashboard = () => {
     } else if (scheduleFilter === 'tomorrow') {
         filteredAppointments = approved.filter(a => a.date === tomorrowStr);
     } else {
-        filteredAppointments = approved.filter(a => new Date(a.date) >= today && new Date(a.date) <= nextWeek);
-        maxAppointments = 50; // Arbitrary max for a week
+        // Week: include appointments from today through the next 7 days (compare as strings – YYYY-MM-DD sorts lexicographically)
+        filteredAppointments = approved.filter(a => a.date >= todayStr && a.date <= toLocalDateStr(endOfWeek));
+        maxAppointments = 50;
     }
     const busynessPercentage = Math.min(100, Math.round((filteredAppointments.length / maxAppointments) * 100));
 
@@ -310,7 +323,7 @@ const DoctorDashboard = () => {
     // Plans Done Logic
     const totalConsultations = approved.length + completed.length;
     const totalRequests = pending.length;
-    const totalAll = totalConsultations + totalRequests || 1; 
+    const totalAll = totalConsultations + totalRequests || 1;
 
     const consultationPct = Math.round((totalConsultations / totalAll) * 100);
     const pendingPct = Math.round((totalRequests / totalAll) * 100);
@@ -679,22 +692,35 @@ const DoctorDashboard = () => {
                     {/* Days Row */}
                     <div className="flex justify-between items-center px-2">
                         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, idx) => {
-                            // Calculate dates for the current week starting from Sunday
-                            const curr = new Date(today);
-                            const first = curr.getDate() - curr.getDay() + idx;
-                            const dayDate = new Date(curr.setDate(first));
-                            const dayStr = dayDate.toISOString().split('T')[0];
-                            
+                            // Fix: create a fresh Date per iteration so we don't mutate a shared object.
+                            // Sunday of the current week = today minus today.getDay() days.
+                            const sundayOfWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
+                            const dayDate = new Date(sundayOfWeek);
+                            dayDate.setDate(sundayOfWeek.getDate() + idx);
+                            // Use local date parts so timezone doesn't shift the day
+                            const dayStr = toLocalDateStr(dayDate);
+
                             const isSelected = selectedCalendarDate === dayStr;
-                            
+                            const isToday = dayStr === todayStr;
+
                             return (
-                                <div 
-                                    key={day} 
+                                <div
+                                    key={day}
                                     onClick={() => setSelectedCalendarDate(dayStr)}
-                                    className={`flex flex-col items-center gap-2 p-2 rounded-xl cursor-pointer transition-colors ${isSelected ? 'bg-primary-green text-white shadow-lg shadow-primary-green/20' : 'text-gray-400 hover:bg-gray-100 hover:text-text-dark'}`}
+                                    className={`flex flex-col items-center gap-2 p-2 rounded-xl cursor-pointer transition-colors ${
+                                        isSelected
+                                            ? 'bg-primary-green text-white shadow-lg shadow-primary-green/20'
+                                            : 'text-gray-400 hover:bg-gray-100 hover:text-text-dark'
+                                    }`}
                                 >
                                     <span className="text-[10px] font-bold uppercase">{day}</span>
-                                    <span className={`text-sm font-black ${isSelected ? 'text-white' : 'text-text-dark'}`}>{dayDate.getDate()}</span>
+                                    <span className={`text-sm font-black ${isSelected ? 'text-white' : 'text-text-dark'}`}>
+                                        {dayDate.getDate()}
+                                    </span>
+                                    {/* Dot indicator for today */}
+                                    {isToday && !isSelected && (
+                                        <span className="w-1 h-1 rounded-full bg-primary-green" />
+                                    )}
                                 </div>
                             );
                         })}
